@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Countdown timer builder</title>
+<style>
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F4F4F2;
+    --text: #191919;
+    --muted: #5C5C5C;
+    --line: #DEDEDA;
+    --accent: #2B59C3;
+    --ok: #1E7A4C;
+    --warn: #A4400B;
+    --btn-bg: #191919;
+    --btn-text: #FFFFFF;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161616;
+      --surface: #212121;
+      --text: #EDEDEA;
+      --muted: #A3A3A0;
+      --line: #353533;
+      --accent: #8AA8F0;
+      --ok: #6CCB98;
+      --warn: #F0A06A;
+      --btn-bg: #EDEDEA;
+      --btn-text: #161616;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161616; --surface: #212121; --text: #EDEDEA; --muted: #A3A3A0; --line: #353533;
+    --accent: #8AA8F0; --ok: #6CCB98; --warn: #F0A06A; --btn-bg: #EDEDEA; --btn-text: #161616;
+    color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Avenir Next", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  main { max-width: 700px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 2.4rem; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; }
+  h3 { font-size: 1.02rem; font-weight: 600; margin: 22px 0 4px; }
+  h2 { font-size: 1.3rem; font-weight: 600; margin: 0 0 6px; display: flex; gap: 14px; align-items: baseline; }
+  h2 .n { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 500; min-width: 1.2em; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--muted); font-size: 1.1rem; max-width: 34em; }
+  a { color: var(--accent); }
+
+  .stage {
+    margin: 36px 0 12px;
+    background: #FFFFFF;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 32px 20px;
+    display: flex; justify-content: center;
+  }
+  .stage { overflow-x: auto; justify-content: safe center; }
+  .stage img { display: block; max-width: none; height: auto; flex: none; }
+  .stage .empty { color: #5C5C5C; font-size: 0.95rem; }
+  .caption { color: var(--muted); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .status-ok { color: var(--ok); }
+  .status-warn { color: var(--warn); }
+
+  details.tweak { margin: 22px 0 0; border-top: 1px solid var(--line); padding-top: 14px; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px 20px; margin-top: 16px; }
+  .grid > div { min-width: 0; }
+  input, select, textarea { box-sizing: border-box; max-width: 100%; }
+  label { display: block; font-size: 0.9rem; color: var(--muted); margin-bottom: 4px; }
+  input[type="text"], input[type="url"], select {
+    width: 100%; font: inherit; font-size: 1rem; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 4px; padding: 9px 11px;
+  }
+  .colour { display: flex; gap: 8px; align-items: center; }
+  .colour input[type="text"] { min-width: 0; flex: 1; }
+  .colour input[type="color"] { width: 42px; height: 42px; padding: 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); flex: none; }
+
+  section.step { margin-top: 52px; }
+  ol.how { margin: 10px 0 0; padding-left: 1.3em; }
+  ol.how li { margin-bottom: 6px; }
+
+  button {
+    font: inherit; font-weight: 600; font-size: 1rem;
+    background: var(--btn-bg); color: var(--btn-text);
+    border: 0; border-radius: 4px; padding: 11px 18px; cursor: pointer;
+  }
+  button.quiet { background: transparent; color: var(--text); border: 1px solid var(--line); padding: 8px 14px; font-size: 0.92rem; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .done { color: var(--ok); font-size: 0.92rem; }
+
+  .code {
+    position: relative; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+  }
+  .code pre {
+    margin: 0; padding: 14px 16px; overflow-x: auto; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+  }
+  .code .copy { position: absolute; top: 8px; right: 8px; }
+  .code pre { padding-right: 90px; }
+  textarea.worker {
+    width: 100%; height: 160px; margin-top: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem;
+    background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 10px;
+  }
+  .note { color: var(--muted); font-size: 0.92rem; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Countdown timer for emails</h1>
+  <p class="lede">Builds the timer with your font baked in, ready to drop into Cloudflare, then gives you the Iterable snippet. Nothing to install.</p>
+
+  <div class="stage" aria-live="polite"><span class="empty" id="previewEmpty">Drawing the preview…</span><img id="preview" alt="Preview of the countdown timer" class="hidden"></div>
+  <div class="caption">
+    <span>Counting down to a sample deadline three days away. In emails it stretches to fill the column, up to 540px wide.</span>
+    <span id="sizeInfo"></span>
+    <span id="fontStatus"></span>
+  </div>
+
+  <details class="tweak">
+    <summary>Adjust the look</summary>
+    <div class="grid">
+      <div>
+        <label for="family">Font</label>
+        <input type="text" id="family" value="Avenir Next">
+      </div>
+      <div>
+        <label for="numWeight">Number weight</label>
+        <select id="numWeight">
+          <option value="400">Regular</option>
+          <option value="500">Medium</option>
+          <option value="600">Demi Bold</option>
+          <option value="700" selected>Bold</option>
+          <option value="800">Heavy</option>
+        </select>
+      </div>
+      <div>
+        <label for="labelWeight">Label weight</label>
+        <select id="labelWeight">
+          <option value="400">Regular</option>
+          <option value="500" selected>Medium</option>
+          <option value="600">Demi Bold</option>
+        </select>
+      </div>
+      <div>
+        <label for="numColour">Number colour</label>
+        <div class="colour"><input type="color" id="numColourPick" value="#FFFFFF" aria-label="Pick number colour"><input type="text" id="numColour" value="#FFFFFF"></div>
+      </div>
+      <div>
+        <label for="labelColour">Label colour</label>
+        <div class="colour"><input type="color" id="labelColourPick" value="#FFFFFF" aria-label="Pick label colour"><input type="text" id="labelColour" value="#FFFFFF"></div>
+      </div>
+      <div>
+        <label for="bgColour">Background</label>
+        <div class="colour"><input type="color" id="bgColourPick" value="#191919" aria-label="Pick background colour"><input type="text" id="bgColour" value="#191919"></div>
+      </div>
+      <div>
+        <label for="numSize">Number size (px)</label>
+        <input type="text" id="numSize" value="36" inputmode="numeric">
+      </div>
+      <div>
+        <label for="labelSize">Label size (px)</label>
+        <input type="text" id="labelSize" value="12" inputmode="numeric">
+      </div>
+      <div>
+        <label for="padding">Padding (px)</label>
+        <input type="text" id="padding" value="30" inputmode="numeric">
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px">Sizes are in email pixels, the same units as your email styles. Your changes are remembered in this browser.</p>
+  </details>
+
+  <section class="step">
+    <h2><span class="n">1</span>Download the timer files</h2>
+    <p>One zip with everything Cloudflare needs: the timer, your font, and a 24-second backup timer for when the free plan runs out of requests.</p>
+    <div class="row">
+      <button id="downloadZip" disabled>Download timer files</button>
+      <span class="done hidden" id="downloadDone"></span>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">2</span>Put it online with Cloudflare</h2>
+    <p>The timer runs on Cloudflare Pages, a free hosting service. Every time someone opens an email, their email app asks Cloudflare for the image, and Cloudflare draws a fresh countdown. The free plan covers it.</p>
+
+    <h3>Need an account?</h3>
+    <p>If Melodics already has a Cloudflare account with the timer in it, ask for access and skip to <strong>Updating the timer</strong>. If not, <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">sign up at cloudflare.com</a>. Use a shared Melodics address like support@melodics.com, not a personal one. If the account belongs to one person, the timer stops working when their email is closed.</p>
+
+    <h3>Setting it up the first time</h3>
+    <ol class="how">
+      <li>In the Cloudflare dashboard, go to <strong>Workers &amp; Pages</strong> in the sidebar.</li>
+      <li>Click <strong>Create application</strong>. Skip the Worker options, look for the line near the bottom about deploying Pages, and click <strong>Get started</strong> next to it. Choose <strong>Drag and drop your files</strong>.</li>
+      <li>Name the project, e.g. <code>melodics-countdown</code>. The name becomes part of the web address. Click <strong>Create project</strong>.</li>
+      <li>Drag in the zip from step 1 and click <strong>Deploy site</strong>.</li>
+      <li>Copy the address it gives you, ending in <code>pages.dev</code>, for step 3.</li>
+    </ol>
+
+    <h3>Updating the timer</h3>
+    <ol class="how">
+      <li>Download a new zip from step 1.</li>
+      <li>In Workers &amp; Pages, open the timer’s project and go to <strong>Deployments</strong>.</li>
+      <li>Click <strong>Create deployment</strong>, make sure it’s set to <strong>Production</strong>, drag in the zip, and deploy. The address stays the same, so emails using it pick up the change automatically.</li>
+    </ol>
+    <p class="note">Button names in Cloudflare may differ slightly. Leave the project’s Functions setting on <strong>fail open</strong>, which is the default. That’s what switches to the backup timer if the free plan’s daily requests run out.</p>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">3</span>Paste your URL</h2>
+    <label for="workerUrl">Your pages.dev URL</label>
+    <input type="url" id="workerUrl" placeholder="https://melodics-countdown.pages.dev">
+    <div id="urlOut" class="hidden">
+      <p class="row"><a id="testLink" target="_blank" rel="noopener">Open a test timer</a><span class="note">Should count down to three days from now.</span></p>
+      <p class="row"><a id="fallbackLink" target="_blank" rel="noopener">See the backup timer</a><span class="note">What people see if the day’s requests run out.</span></p>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">4</span>Set up the snippet in Iterable</h2>
+    <ol class="how">
+      <li>Go to <strong>Content &gt; Snippets</strong>, click <strong>New Snippet</strong>, and name it <code>Countdown timer</code>.</li>
+      <li>Add one variable called <code>end</code>.</li>
+      <li>Paste this as the snippet content:</li>
+    </ol>
+    <div class="code"><pre id="snippetCode">Paste your URL in step 3 first.</pre><button class="quiet copy" data-copy="snippetCode">Copy</button></div>
+    <p style="margin-top:20px">Then in any email, use an HTML block with this, changing the date and time (NZ time) for each campaign:</p>
+    <div class="code"><pre id="usageCode">{{{snippet "Countdown timer" "2026-12-01T00:00"}}}</pre><button class="quiet copy" data-copy="usageCode">Copy</button></div>
+    <p class="note" style="margin-top:14px">Put the deadline in the copy near the timer too, so the email still makes sense if the image doesn’t load. A wrong or missing date shows a broken image, so mistakes get caught in proofs.</p>
+  </section>
+</main>
+
+<script>
+// ===================== Renderer (also copied into the Worker) =====================
+function createRenderer(G, COLOURS) {
+  const { WIDTH, HEIGHT, CELL_W, CELL_H, CELLS } = G;
+  const FRAMES = 60;
+  const MAX_SECONDS = 99 * 86400 + 86399;
+
+  function unRle(b64) {
+    const bin = atob(b64);
+    let len = 0;
+    for (let i = 1; i < bin.length; i += 2) len += bin.charCodeAt(i);
+    const out = new Uint8Array(len);
+    let o = 0;
+    for (let i = 0; i < bin.length; i += 2) {
+      out.fill(bin.charCodeAt(i), o, o + bin.charCodeAt(i + 1));
+      o += bin.charCodeAt(i + 1);
+    }
+    return out;
+  }
+  const STATIC = unRle(G.STATIC_RLE);
+  const DIGITS = G.DIGITS_RLE.map(unRle);
+
+  let INK_T = CELL_H, INK_B = 0, INK_L = CELL_W, INK_R = 0;
+  for (const g of DIGITS) {
+    for (let y = 0; y < CELL_H; y++) for (let x = 0; x < CELL_W; x++) {
+      if (g[y * CELL_W + x]) {
+        if (y < INK_T) INK_T = y; if (y > INK_B) INK_B = y;
+        if (x < INK_L) INK_L = x; if (x > INK_R) INK_R = x;
+      }
+    }
+  }
+  const frameCache = new Map();
+
+  function hexToRgb(hex) {
+    const n = parseInt(hex, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function buildPalette(bgHex) {
+    const bg = hexToRgb(bgHex);
+    const pal = new Uint8Array(96);
+    const ramp = (start, colour) => {
+      for (let k = 1; k <= 15; k++) for (let c = 0; c < 3; c++) {
+        pal[(start + k - 1) * 3 + c] = Math.round(bg[c] + ((colour[c] - bg[c]) * k) / 15);
+      }
+    };
+    pal.set(bg, 0);
+    ramp(1, hexToRgb(COLOURS.number));
+    ramp(16, hexToRgb(COLOURS.label));
+    pal.set(bg, 93);
+    return pal;
+  }
+  const DEFAULT_PALETTE = buildPalette(COLOURS.background);
+
+  function toDigits(sec) {
+    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return [d, h, m, s].flatMap((v) => [Math.floor(v / 10), v % 10]);
+  }
+  function drawDigit(canvas, cell, digit) {
+    const x0 = CELLS[cell][0], y0 = CELLS[cell][1], g = DIGITS[digit];
+    for (let y = 0; y < CELL_H; y++) canvas.set(g.subarray(y * CELL_W, (y + 1) * CELL_W), (y0 + y) * WIDTH + x0);
+  }
+
+  function Bytes(size) { this.buf = new Uint8Array(size); this.len = 0; }
+  Bytes.prototype.grow = function (n) {
+    if (this.len + n <= this.buf.length) return;
+    const b = new Uint8Array(Math.max(this.buf.length * 2, this.len + n));
+    b.set(this.buf.subarray(0, this.len)); this.buf = b;
+  };
+  Bytes.prototype.byte = function (v) { this.grow(1); this.buf[this.len++] = v; };
+  Bytes.prototype.word = function (v) { this.byte(v & 255); this.byte((v >> 8) & 255); };
+  Bytes.prototype.bytes = function (a) { this.grow(a.length); this.buf.set(a, this.len); this.len += a.length; };
+  Bytes.prototype.result = function () { return this.buf.subarray(0, this.len); };
+
+  // LZW encoder, adapted from the classic GIFEncoder (Kevin Weiner / Jef Poskanzer)
+  const BITS = 12, HSIZE = 5003, HSHIFT = 4;
+  const htab = new Int32Array(HSIZE), codetab = new Int32Array(HSIZE), block = new Uint8Array(256);
+  function writeLZW(out, px, minCodeSize) {
+    out.byte(minCodeSize);
+    const initBits = minCodeSize + 1, clearCode = 1 << minCodeSize, eofCode = clearCode + 1;
+    let nBits = initBits, maxcode = (1 << nBits) - 1, freeEnt = clearCode + 2, clearFlag = false;
+    let acc = 0, accBits = 0, bLen = 0;
+    const flush = () => { if (bLen > 0) { out.byte(bLen); out.bytes(block.subarray(0, bLen)); bLen = 0; } };
+    const emit = (code) => {
+      acc = accBits > 0 ? (acc & ((1 << accBits) - 1)) | (code << accBits) : code;
+      accBits += nBits;
+      while (accBits >= 8) { block[bLen++] = acc & 255; if (bLen === 255) flush(); acc >>= 8; accBits -= 8; }
+      if (freeEnt > maxcode || clearFlag) {
+        if (clearFlag) { nBits = initBits; maxcode = (1 << nBits) - 1; clearFlag = false; }
+        else { nBits++; maxcode = nBits === BITS ? 1 << BITS : (1 << nBits) - 1; }
+      }
+      if (code === eofCode) {
+        while (accBits > 0) { block[bLen++] = acc & 255; if (bLen === 255) flush(); acc >>= 8; accBits -= 8; }
+        flush();
+      }
+    };
+    htab.fill(-1);
+    emit(clearCode);
+    let ent = px[0];
+    outer: for (let p = 1; p < px.length; p++) {
+      const c = px[p];
+      const fcode = (c << BITS) + ent;
+      let i = (c << HSHIFT) ^ ent;
+      if (htab[i] === fcode) { ent = codetab[i]; continue; }
+      if (htab[i] >= 0) {
+        const disp = i === 0 ? 1 : HSIZE - i;
+        do {
+          if ((i -= disp) < 0) i += HSIZE;
+          if (htab[i] === fcode) { ent = codetab[i]; continue outer; }
+        } while (htab[i] >= 0);
+      }
+      emit(ent);
+      ent = c;
+      if (freeEnt < 1 << BITS) { codetab[i] = freeEnt++; htab[i] = fcode; }
+      else { htab.fill(-1); freeEnt = clearCode + 2; clearFlag = true; emit(clearCode); }
+    }
+    emit(ent);
+    emit(eofCode);
+    out.byte(0);
+  }
+  function frameHeader(out, x, y, w, h) {
+    out.bytes([0x21, 0xf9, 0x04, 0x04, 100, 0, 0, 0, 0x2c]);
+    out.word(x); out.word(y); out.word(w); out.word(h);
+    out.byte(0);
+  }
+  function crop(canvas, x, y, w, h) {
+    const px = new Uint8Array(w * h);
+    for (let r = 0; r < h; r++) px.set(canvas.subarray((y + r) * WIDTH + x, (y + r) * WIDTH + x + w), r * w);
+    return px;
+  }
+
+  function render(secondsLeft, bgHex) {
+    let sec = Math.max(0, Math.min(MAX_SECONDS, Math.floor(secondsLeft)));
+    const custom = bgHex && bgHex.toUpperCase() !== COLOURS.background.toUpperCase();
+    const out = new Bytes(64 * 1024);
+    out.bytes([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
+    out.word(WIDTH); out.word(HEIGHT);
+    out.bytes([0xf4, 0x00, 0x00]);
+    out.bytes(custom ? buildPalette(bgHex) : DEFAULT_PALETTE);
+
+    const canvas = STATIC.slice();
+    let prev = toDigits(sec);
+    prev.forEach((d, i) => drawDigit(canvas, i, d));
+    frameHeader(out, 0, 0, WIDTH, HEIGHT);
+    writeLZW(out, canvas, 5);
+
+    for (let f = 1; f < FRAMES && sec > 0; f++) {
+      sec--;
+      const next = toDigits(sec);
+      let first = -1, last = -1;
+      for (let i = 0; i < 8; i++) {
+        if (next[i] !== prev[i]) { if (first < 0) first = i; last = i; drawDigit(canvas, i, next[i]); }
+      }
+      const x = CELLS[first][0] + INK_L, y = CELLS[first][1] + INK_T;
+      const w = CELLS[last][0] + INK_R + 1 - x, h = INK_B - INK_T + 1;
+      const key = first + ':' + last + ':' + next.slice(first, last + 1).join('');
+      let data = frameCache.get(key);
+      if (!data) {
+        const tmp = new Bytes(8 * 1024);
+        writeLZW(tmp, crop(canvas, x, y, w, h), 5);
+        data = tmp.result().slice();
+        if (frameCache.size < 3000) frameCache.set(key, data);
+      }
+      frameHeader(out, x, y, w, h);
+      out.bytes(data);
+      prev = next;
+    }
+    out.byte(0x3b);
+    return out.result();
+  }
+
+  // Warm up while the script starts, so real requests run on warm code
+  for (let i = 0; i < 6; i++) render(3 * 86400 + 4 * 3600 + 3599 - i * 3671);
+  return render;
+}
+
+// ===================== NZ time parsing (also copied into the Worker) =====================
+function createParseEnd() {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  function offsetMs(utcMs) {
+    const p = {};
+    for (const x of fmt.formatToParts(new Date(utcMs))) p[x.type] = x.value;
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(utcMs / 1000) * 1000;
+  }
+  return function parseEnd(raw) {
+    if (!raw) return null;
+    const m = raw.trim().replace(' ', 'T').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?$/);
+    if (!m) return null;
+    const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    if (Number.isNaN(wall)) return null;
+    const zone = m[7];
+    if (zone) {
+      if (zone === 'Z') return wall;
+      const sign = zone[0] === '-' ? -1 : 1;
+      const d = zone.slice(1).replace(':', '');
+      return wall - sign * (+d.slice(0, 2) * 60 + +d.slice(2)) * 60000;
+    }
+    let t = wall - offsetMs(wall);
+    return wall - offsetMs(t);
+  };
+}
+
+// ===================== Glyph drawing (runs in this page, uses your Mac's fonts) =====================
+function generateGlyphs(opt) {
+  const SCALE = 2, LEVELS = 15;
+  const s = (v) => Math.round(v * SCALE);
+  const LABELS = ['DAYS', 'HOURS', 'MINUTES', 'SECONDS'];
+  const fam = '"' + opt.family.replace(/"/g, '') + '", "Helvetica Neue", Arial, sans-serif';
+  const numFont = opt.numberWeight + ' ' + s(opt.numberSize) + 'px ' + fam;
+  const labelFont = opt.labelWeight + ' ' + s(opt.labelSize) + 'px ' + fam;
+  const canvasOf = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c.getContext('2d', { willReadFrequently: true }); };
+  const coverage = (ctx, w, h) => {
+    const a = ctx.getImageData(0, 0, w, h).data, out = new Uint8Array(w * h);
+    for (let i = 0; i < out.length; i++) out[i] = Math.round((a[i * 4 + 3] * LEVELS) / 255);
+    return out;
+  };
+
+  const probe = canvasOf(10, 10);
+  probe.font = numFont;
+  let maxAdv = 0, maxAsc = 0, maxDesc = 0;
+  for (let d = 0; d <= 9; d++) {
+    const m = probe.measureText(String(d));
+    maxAdv = Math.max(maxAdv, m.width);
+    maxAsc = Math.max(maxAsc, m.actualBoundingBoxAscent);
+    maxDesc = Math.max(maxDesc, m.actualBoundingBoxDescent);
+  }
+  const cellW = Math.ceil(maxAdv) + s(2);
+  const cellH = Math.ceil(maxAsc + maxDesc) + s(4);
+  const digitBaseline = Math.ceil(maxAsc) + s(2);
+  probe.font = labelFont;
+  const labelAsc = Math.ceil(probe.measureText('H').actualBoundingBoxAscent);
+  const tracking = s(opt.labelSize) * 0.14;
+  const labelW = LABELS.map((label) => {
+    const chars = [...label];
+    return chars.reduce((a, ch) => a + probe.measureText(ch).width, 0) + tracking * (chars.length - 1);
+  });
+
+  // Lay out on a roomy canvas first; it gets trimmed to the exact padding below
+  const pairW = cellW * 2;
+  const colW = Math.max(pairW, Math.ceil(Math.max(...labelW)) + s(6));
+  const colonW = s(Math.max(10, Math.round(opt.numberSize * 0.5)));
+  const M = s(40);
+  const W0 = M * 2 + colW * 4 + colonW * 3;
+  const labelBaseline = M + cellH + s(Math.max(4, Math.round(opt.numberSize * 0.14))) + labelAsc;
+  const H0 = labelBaseline + labelAsc + M;
+  const colX = (g) => M + g * (colW + colonW);
+  const cells0 = [];
+  for (let g = 0; g < 4; g++) {
+    const px = colX(g) + Math.round((colW - pairW) / 2);
+    cells0.push([px, M], [px + cellW, M]);
+  }
+
+  const digits = [];
+  for (let d = 0; d <= 9; d++) {
+    const ctx = canvasOf(cellW, cellH);
+    ctx.font = numFont; ctx.fillStyle = '#000';
+    const w = ctx.measureText(String(d)).width;
+    ctx.fillText(String(d), (cellW - w) / 2, digitBaseline);
+    digits.push(coverage(ctx, cellW, cellH));
+  }
+
+  const sctx = canvasOf(W0, H0);
+  sctx.fillStyle = '#000';
+  sctx.font = labelFont;
+  LABELS.forEach((label, g) => {
+    let x = colX(g) + (colW - labelW[g]) / 2;
+    [...label].forEach((ch) => { sctx.fillText(ch, x, labelBaseline); x += sctx.measureText(ch).width + tracking; });
+  });
+  const capMid = M + digitBaseline - maxAsc / 2;
+  const dotR = s(opt.numberSize) * 0.055, dotGap = s(opt.numberSize) * 0.17;
+  for (let g = 0; g < 3; g++) {
+    const cx = colX(g) + colW + colonW / 2;
+    for (const cy of [capMid - dotGap, capMid + dotGap]) { sctx.beginPath(); sctx.arc(cx, cy, dotR, 0, Math.PI * 2); sctx.fill(); }
+  }
+  const static0 = coverage(sctx, W0, H0).map((v) => (v ? 15 + v : 0));
+
+  // Edges of everything that can ever be drawn, then pad exactly
+  let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
+  for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) {
+    if (static0[y * W0 + x]) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  let iT = cellH, iB = -1, iL = cellW, iR = -1;
+  for (const g of digits) for (let y = 0; y < cellH; y++) for (let x = 0; x < cellW; x++) {
+    if (g[y * cellW + x]) { if (y < iT) iT = y; if (y > iB) iB = y; if (x < iL) iL = x; if (x > iR) iR = x; }
+  }
+  for (const [cx, cy] of cells0) {
+    minX = Math.min(minX, cx + iL); maxX = Math.max(maxX, cx + iR);
+    minY = Math.min(minY, cy + iT); maxY = Math.max(maxY, cy + iB);
+  }
+  const P = s(opt.padding);
+  let W = maxX - minX + 1 + P * 2, H = maxY - minY + 1 + P * 2;
+  W = Math.ceil(W / SCALE) * SCALE; H = Math.ceil(H / SCALE) * SCALE;
+  const ox = P - minX, oy = P - minY;
+  const staticLayer = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const sy = y - oy;
+    if (sy < 0 || sy >= H0) continue;
+    for (let x = 0; x < W; x++) {
+      const sx = x - ox;
+      if (sx >= 0 && sx < W0) staticLayer[y * W + x] = static0[sy * W0 + sx];
+    }
+  }
+  const cells = cells0.map(([x, y]) => [x + ox, y + oy]);
+  for (const c of cells) {
+    if (c[0] < 0 || c[1] < 0 || c[0] + cellW > W || c[1] + cellH > H) {
+      throw new Error('Padding is too small for this font size. Try a larger padding.');
+    }
+  }
+
+  const rle = (arr) => {
+    let str = '';
+    for (let i = 0; i < arr.length;) {
+      let run = 1;
+      while (i + run < arr.length && arr[i + run] === arr[i] && run < 255) run++;
+      str += String.fromCharCode(arr[i], run);
+      i += run;
+    }
+    return btoa(str);
+  };
+  return { WIDTH: W, HEIGHT: H, CELL_W: cellW, CELL_H: cellH, CELLS: cells, STATIC_RLE: rle(staticLayer), DIGITS_RLE: digits.map(rle) };
+}
+
+// ===================== Page wiring =====================
+const $ = (id) => document.getElementById(id);
+let G = null, workerSource = '', displayW = 0, displayH = 0, previewTimer = null;
+
+function fontAvailable(family) {
+  const ctx = document.createElement('canvas').getContext('2d');
+  const sample = '0123456789 DAYS HOURS MINUTES SECONDS';
+  return ['monospace', 'serif'].some((fallback) => {
+    ctx.font = '72px ' + fallback; const a = ctx.measureText(sample).width;
+    ctx.font = '72px "' + family + '", ' + fallback; const b = ctx.measureText(sample).width;
+    return a !== b;
+  });
+}
+
+function cleanHex(v, fallback) {
+  const h = String(v).trim().replace('#', '');
+  return /^[0-9a-fA-F]{6}$/.test(h) ? h.toUpperCase() : fallback;
+}
+
+function toBase64(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+function nzStamp(msFromNow) {
+  const p = {};
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .formatToParts(new Date(Date.now() + msFromNow)).forEach((x) => { p[x.type] = x.value; });
+  return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
+}
+
+function buildWorker(G, colours, opts) {
+  return [
+    '// Email countdown timer for Cloudflare Pages (advanced mode _worker.js).',
+    '// Made with the countdown timer builder. Font: ' + opts.family + ', weights ' + opts.numberWeight + '/' + opts.labelWeight + '.',
+    "// Use: https://<project>.pages.dev/timer.gif?end=2026-12-01T00:00 (NZ time). Optional &bg=F5F5F5.",
+    '// If the free plan runs out of requests, Pages fails open and serves the static timer.gif (a 24-second timer).',
+    '',
+    'const G = ' + JSON.stringify(G) + ';',
+    'const COLOURS = ' + JSON.stringify(colours) + ';',
+    '',
+    createRenderer.toString(),
+    '',
+    createParseEnd.toString(),
+    '',
+    'const renderCountdown = createRenderer(G, COLOURS);',
+    'const parseEnd = createParseEnd();',
+    '',
+    'export default {',
+    '  async fetch(request, env) {',
+    '    const url = new URL(request.url);',
+    "    if (url.pathname !== '/timer.gif') return env.ASSETS.fetch(request);",
+    "    const end = parseEnd(url.searchParams.get('end'));",
+    "    if (end === null) return new Response('Missing or invalid end. Use ?end=YYYY-MM-DDTHH:MM in NZ time.', { status: 400 });",
+    "    let bg = (url.searchParams.get('bg') || COLOURS.background).replace('#', '');",
+    '    if (!/^[0-9a-fA-F]{6}$/.test(bg)) bg = COLOURS.background;',
+    '    const gif = renderCountdown(Math.floor((end - Date.now()) / 1000), bg);',
+    '    return new Response(gif, { headers: {',
+    "      'Content-Type': 'image/gif',",
+    "      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',",
+    "      'Pragma': 'no-cache', 'Expires': '0',",
+    '    } });',
+    '  },',
+    '};',
+    '',
+  ].join('\n');
+}
+
+function crc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    let c = (crc ^ bytes[i]) & 0xFF;
+    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1;
+    crc = (crc >>> 8) ^ c;
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+// Minimal zip writer, files stored uncompressed
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  const u16 = (v) => [v & 255, (v >> 8) & 255];
+  const u32 = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+    const crc = crc32(data);
+    const head = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0)]);
+    parts.push(head, name, data);
+    central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), name);
+    offset += head.length + name.length + data.length;
+  }
+  const cSize = central.reduce((a, b) => a + b.length, 0);
+  const endRec = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(cSize), ...u32(offset), ...u16(0)]);
+  const all = [...parts, ...central, endRec];
+  const out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
+  let o = 0;
+  for (const a of all) { out.set(a, o); o += a.length; }
+  return out;
+}
+let zipBytes = null;
+function buildZip(renderer) {
+  const backup = renderer(24);
+  return makeZip([
+    { name: '_worker.js', data: workerSource },
+    { name: '_routes.json', data: JSON.stringify({ version: 1, include: ['/timer.gif'], exclude: [] }, null, 2) },
+    { name: 'timer.gif', data: backup },
+    { name: 'fallback.gif', data: backup },
+  ]);
+}
+let downloadsApi = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then((d) => { downloadsApi = d; }).catch(() => {});
+
+let renderPreview = null;
+function rebuild() {
+  const opts = {
+    family: $('family').value.trim() || 'Avenir Next',
+    numberWeight: $('numWeight').value,
+    labelWeight: $('labelWeight').value,
+    numberSize: Math.min(120, Math.max(14, parseInt($('numSize').value, 10) || 36)),
+    labelSize: Math.min(40, Math.max(8, parseInt($('labelSize').value, 10) || 12)),
+    padding: Math.min(120, Math.max(0, parseInt($('padding').value, 10) || 0)),
+  };
+  const colours = {
+    number: cleanHex($('numColour').value, 'FFFFFF'),
+    label: cleanHex($('labelColour').value, 'FFFFFF'),
+    background: cleanHex($('bgColour').value, '191919'),
+  };
+  const ok = fontAvailable(opts.family);
+  $('fontStatus').textContent = ok
+    ? opts.family + ' found on this computer.'
+    : opts.family + ' isn’t available in this browser, so a fallback font is showing. Open this page in Safari or Chrome on a Mac.';
+  $('fontStatus').className = ok ? 'status-ok' : 'status-warn';
+
+  try { G = generateGlyphs(opts); }
+  catch (e) { $('fontStatus').textContent = e.message; $('fontStatus').className = 'status-warn'; return; }
+  displayW = G.WIDTH / 2; displayH = G.HEIGHT / 2;
+  renderPreview = createRenderer(G, colours);
+  workerSource = buildWorker(G, colours, opts);
+  zipBytes = buildZip(renderPreview);
+  $('downloadZip').disabled = false;
+  $('downloadDone').classList.add('hidden');
+  showPreview();
+  updateSnippet();
+}
+
+const previewEnd = Date.now() + 3 * 86400000 + 4 * 3600000 + 17 * 60000;
+function showPreview() {
+  if (!renderPreview) return;
+  const gif = renderPreview((previewEnd - Date.now()) / 1000);
+  const img = $('preview');
+  img.src = 'data:image/gif;base64,' + toBase64(gif);
+  img.width = displayW; img.height = displayH;
+  $('sizeInfo').textContent = displayW * 2 < 540 ? 'This is narrow enough that it may look soft when stretched to 540px. A bigger number size will sharpen it.' : '';
+  img.classList.remove('hidden');
+  $('previewEmpty').classList.add('hidden');
+}
+
+function normaliseUrl(v) {
+  let u = v.trim();
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try { const parsed = new URL(u); return parsed.origin; } catch (e) { return ''; }
+}
+
+function updateSnippet() {
+  const base = normaliseUrl($('workerUrl').value);
+  if (!base) {
+    $('snippetCode').textContent = 'Paste your URL in step 3 first.';
+    $('urlOut').classList.add('hidden');
+    return;
+  }
+  try { localStorage.setItem('countdownWorkerUrl', $('workerUrl').value.trim()); } catch (e) {}
+  $('snippetCode').textContent =
+    '<!-- Countdown timer. Set end as YYYY-MM-DDTHH:MM in NZ time, e.g. 2026-12-01T17:30. Daylight saving is handled. -->\n' +
+    '<img src="' + base + '/timer.gif?end={{end}}" width="540" alt="Countdown timer" style="display:block; width:100%; max-width:540px; height:auto; margin:0 auto; border:0;">';
+  $('testLink').href = base + '/timer.gif?end=' + nzStamp(3 * 86400000);
+  $('fallbackLink').href = base + '/fallback.gif';
+  $('urlOut').classList.remove('hidden');
+}
+
+async function copyText(text, sourceEl) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (ok) return true;
+  } catch (e) {}
+  if (sourceEl) { sourceEl.classList.remove('hidden'); sourceEl.focus(); sourceEl.select && sourceEl.select(); }
+  return false;
+}
+
+$('downloadZip').addEventListener('click', async () => {
+  const done = $('downloadDone');
+  const show = (t) => { done.textContent = t; done.classList.remove('hidden'); };
+  if (!zipBytes) return;
+  if (downloadsApi) {
+    try { await downloadsApi.save({ filename: 'email-countdown.zip', data: zipBytes.slice() }); show('Saved to your downloads'); }
+    catch (e) { show(e && e.code === 'declined' ? 'Download cancelled' : 'The download didn’t work here. Try opening this page in its own tab.'); }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([zipBytes], { type: 'application/zip' }));
+  a.download = 'email-countdown.zip';
+  document.body.appendChild(a); a.click(); a.remove();
+  show('Saved to your downloads');
+});
+document.querySelectorAll('button[data-copy]').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const ok = await copyText($(btn.dataset.copy).textContent);
+    btn.textContent = ok ? 'Copied' : 'Select and copy';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+  });
+});
+$('workerUrl').addEventListener('input', updateSnippet);
+
+let debounce = null;
+const SETTING_IDS = ['family', 'numWeight', 'labelWeight', 'numColour', 'labelColour', 'bgColour', 'numSize', 'labelSize', 'padding'];
+function saveSettings() {
+  try { const o = {}; SETTING_IDS.forEach((id) => { o[id] = $(id).value; }); localStorage.setItem('countdownSettings3', JSON.stringify(o)); } catch (e) {}
+}
+function loadSettings() {
+  try {
+    const o = JSON.parse(localStorage.getItem('countdownSettings3') || 'null');
+    if (!o) return;
+    SETTING_IDS.forEach((id) => { if (o[id] != null) $(id).value = o[id]; });
+    [['numColour', 'numColourPick'], ['labelColour', 'labelColourPick'], ['bgColour', 'bgColourPick']].forEach(([t, p]) => {
+      const h = cleanHex($(t).value, null); if (h) $(p).value = '#' + h;
+    });
+  } catch (e) {}
+}
+loadSettings();
+const queue = () => { saveSettings(); clearTimeout(debounce); debounce = setTimeout(rebuild, 250); };
+['family', 'numWeight', 'labelWeight', 'numSize', 'labelSize', 'padding'].forEach((id) => $(id).addEventListener('input', queue));
+[['numColour', 'numColourPick'], ['labelColour', 'labelColourPick'], ['bgColour', 'bgColourPick']].forEach(([text, pick]) => {
+  $(pick).addEventListener('input', () => { $(text).value = $(pick).value.toUpperCase(); queue(); });
+  $(text).addEventListener('input', () => {
+    const h = cleanHex($(text).value, null);
+    if (h) $(pick).value = '#' + h;
+    queue();
+  });
+});
+
+try { const saved = localStorage.getItem('countdownWorkerUrl'); if (saved) $('workerUrl').value = saved; } catch (e) {}
+
+const start = () => {
+  try { rebuild(); }
+  catch (e) { $('previewEmpty').textContent = 'The preview couldn’t be drawn: ' + e.message; }
+  previewTimer = setInterval(showPreview, 60000);
+};
+if (document.fonts && document.fonts.load) {
+  const fam = '"' + ($('family').value || 'Avenir Next') + '"';
+  Promise.all([document.fonts.load('600 26px ' + fam), document.fonts.load('500 11px ' + fam)]).catch(() => {}).then(start);
+} else {
+  start();
+}
+</script>
+</body>
+</html>
